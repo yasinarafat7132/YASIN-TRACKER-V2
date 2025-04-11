@@ -4,7 +4,7 @@ echo -e "\e[1;32m[+] Installing dependencies...\e[0m"
 pkg install -y php curl jq termux-api qrencode unzip
 
 echo -e "\e[1;32m[+] Starting PHP server...\e[0m"
-php -S 127.0.0.1:8080 > /dev/null 2>&1 &
+php -S 127.0.0.1:8888 > /dev/null 2>&1 &
 
 echo -e "\e[1;32m[+] Starting ngrok...\e[0m"
 nohup ngrok http 8080 > /dev/null 2>&1 &
